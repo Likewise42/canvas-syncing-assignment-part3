@@ -1,13 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+	<script src="/socket.io/socket.io.js"></script>
     <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
     <script type="text/babel" >
-        "use strict";
-    
+    	"use strict";
+    	let socket;
+        let canvas;
+        let ctx;
+        let sideLength = 70;
+        let uID = 0;
+
+        let square = {};
+        let draw = {};
+
+    	const init = () => {
+    		socket = io.connect();
+    		
+    		socket.on('connect', ()=>{
+    			console.log('connected to the server');
+              
+                socket.on('giveSquares',(data)=>{
+                    draw = data.squares;
+                  
+                    drawSquares();
+                });
+                
+                canvas = document.querySelector("#canvas");
+                ctx = canvas.getContext("2d");
+              
+                
+                
+                socket.emit('join', {});
+              
+                socket.on('uID',(data)=>{
+                  uID = data.uID;
+                  console.log(uID);
+                });
+              
+                const val = Math.floor(Math.random()*500);
+              
+                square.val = val;
+              
+                socket.emit('newSquare',{val:val});
+    		});
+    	};
+
+        const updateVal = () => {
+            square.val++;
+          
+            if(square.val > 500){
+                square.val = 0;
+            }
+          
+            ctx.fillStyle = 'red';
+            ctx.fillRect(square.val-(sideLength/2),square.val-(sideLength/2),sideLength,sideLength);
+          
+            socket.emit('updateSquares',{val:square.val, uID:uID});
+        };
+
+        const drawSquares = () => {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            
+            updateVal();
+          
+            ctx.fillStyle = 'black';
+          
+            let keys = Object.keys(draw);
+            
+            for(let i=0; i<keys.length; i++){
+                const drawCall = draw[keys[i]];
+                if(drawCall.uID != uID){
+                    ctx.fillRect(drawCall.x-(sideLength/2),drawCall.y-(sideLength/2),sideLength,sideLength);
+                }
+            }
+        };
+
+        const handleMessage = (data) => {
+            draw[data.time] = data.coords;
+            draw();
+        };
+      
+    	window.onload = init;
     </script>
 </head>
 <body>
-
+    <canvas id="canvas" width="500px" height="500px"></canvas>
 </body>
 </html>
